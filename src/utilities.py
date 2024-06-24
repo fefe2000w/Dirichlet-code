@@ -1,4 +1,4 @@
-# Copyright 2018 Dimitrios Milios, Raffaello Camoriano, 
+# Copyright 2018 Dimitrios Milios, Raffaello Camoriano,
 #                Pietro Michiardi,Lorenzo Rosasco, Maurizio Filippone
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,64 +17,63 @@ import os
 from pathlib import Path
 
 
-
 ## Functions that contain experiment settings as used in the paper
 ## ===============================================================
 
+
 def get_option_inducing(dataset):
-    '''
+    """
     Returns the number of inducing points for a given dataset
     as used in the paper.
-    '''
-    if dataset in ['EEG', 'HTRU2', 'MAGIC', 'SUSY']:
+    """
+    if dataset in ["EEG", "HTRU2", "MAGIC", "SUSY"]:
         return 200
-    if dataset in ['Drive', 'letter', 'MoCap', 'CovertypeBinary']:
+    if dataset in ["Drive", "letter", "MoCap", "CovertypeBinary"]:
         return 500
-    if dataset in ['MiniBoo']:
+    if dataset in ["MiniBoo"]:
         return 400
     return None
 
 
 def get_option_alphaEpsilon(dataset):
-    '''
+    """
     Returns the alpha_epsilon value for a given dataset
     as used in the paper.
-    '''    
-    if dataset in ['CovertypeBinary']:
+    """
+    if dataset in ["CovertypeBinary"]:
         return 0.1
     if dataset in []:
         return 0.0001
-    if dataset in ['letter','Drive','MoCap']:
+    if dataset in ["letter", "Drive", "MoCap"]:
         return 0.001
     # default:
     # EEG, HTRU2, MAGIC, MiniBoo
     return 0.01
 
 
-
-
-
-## Misc utility functions 
+## Misc utility functions
 ## ===============================================================
 
+
 def print_usage(script_name):
-    print('')
-    print('  usage: ' + script_name + ' DATASET XX\n')
-    print('  where:')
-    print('   - DATASET is the directory name of a dataset')
-    print('   - XX is the split index')
-    print('     (two decimals with a leading zero if needed; eg 01)')
-    print('')
+    print("")
+    print("  usage: " + script_name + " DATASET XX\n")
+    print("  where:")
+    print("   - DATASET is the directory name of a dataset")
+    print("   - XX is the split index")
+    print("     (two decimals with a leading zero if needed; eg 01)")
+    print("")
 
 
 def get_dataset_path(dataset):
-    '''
+    """
     Returns the full path of a dataset located in:
     either  datasets/bin_classif  or  datasets/mult_classif
-    '''
+    """
     path_b = os.path.join("datasets", "bin_classif")
     path = os.path.join(path_b, dataset)
     if not Path(path).is_dir():
-        raise FileNotFoundError('No \'' + dataset + '\' dataset found in: ' 
-            + path_b)
+        raise FileNotFoundError(
+            "No '" + dataset + "' dataset found in: " + path_b
+        )
     return path
