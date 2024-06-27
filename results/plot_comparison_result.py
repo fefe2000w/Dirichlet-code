@@ -546,7 +546,7 @@ for measurement in measurements:
         fig.delaxes(axs[j])
 
     # Set the main title for the figure
-    fig.suptitle(f'{measurement.replace("_", " ").title()} Comparison Across Benchmarks', fontsize=20)
+    fig.suptitle(f'{measurement.replace("_", " ").title()} Comparison', fontsize=20)
 
     # Add legend only to the first subplot
     axs[0].legend(loc='upper right', fontsize=12)
@@ -554,7 +554,7 @@ for measurement in measurements:
     # Save the figure to the results directory
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     save_path = os.path.join(graph_dir, f'comparison_{measurement}.png')
-    #plt.savefig(save_path)
+    plt.savefig(save_path)
 
     # Show the plot
     plt.show()
