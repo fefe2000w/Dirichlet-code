@@ -1,4 +1,3 @@
-import sys
 import os
 import pickle
 import numpy as np
@@ -6,7 +5,7 @@ import matplotlib.pyplot as plt
 
 import scipy.io as scio
 
-database = scio.loadmat("./datasets/benchmarks.mat")
+database = scio.loadmat("../datasets/benchmarks.mat")
 benchmarks = database["benchmarks"][0]
 
 
@@ -19,7 +18,7 @@ for benchmark in benchmarks:
     if name != "image" and name != 'splice':
         dataset_names.append(name)
 methods = ['vi', 'db', 'la', 'ep']
-result_dir = os.path.join('results', 'evaluation')
+result_dir = os.path.join('.', 'evaluation')
 
 all_report = {}
 all_errors = {}
@@ -283,7 +282,7 @@ graph_dir = os.path.join('results', 'graph')
 if not os.path.exists(graph_dir):
     os.makedirs(graph_dir)
 save_path = os.path.join(graph_dir, 'measurement.png')
-plt.savefig(save_path)
+#plt.savefig(save_path)
 
 plt.tight_layout()
 plt.show()
@@ -393,7 +392,7 @@ ax[2].set_xticklabels(dataset_names, rotation=45)
 ax[2].legend()
 
 save_path = os.path.join(graph_dir, 'time.png')
-plt.savefig(save_path)
+#plt.savefig(save_path)
 
 plt.show()
 
@@ -465,7 +464,7 @@ axs[2].set_title("ECE vs Time")
 axs[2].legend()
 
 save_path = os.path.join(graph_dir, 'measurement_by_time.png')
-plt.savefig(save_path)
+#plt.savefig(save_path)
 
 plt.tight_layout()
 plt.show()
@@ -518,30 +517,44 @@ errors = {
 colors = ['red', 'blue', 'magenta', 'green']
 markers = ['o', 's', 'D', '^']
 
+num_datasets = len(dataset_names)
+num_cols = 3
+num_rows = (num_datasets + num_cols - 1) // num_cols
+
 # For each measurement, create a plot comparing benchmarks
 for measurement in measurements:
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(18, 18))
+    axs = axs.flatten()
 
-    for idx, (method, color, marker) in enumerate(zip(methods, colors, markers)):
-        values = data[measurement][method]
-        errs = errors[measurement][method]
+    for i, dataset in enumerate(dataset_names):
+        ax = axs[i]
 
-        # Plot the data with error bars
-        ax.errorbar(range(len(dataset_names)), values, yerr=errs, label=method,
-                    fmt=marker, color=color, ecolor=color, elinewidth=2, capsize=4, markersize=8)
+        for method, color, marker in zip(methods, colors, markers):
+            value = data[measurement][method][i]
+            err = errors[measurement][method][i]
 
-    ax.set_xticks(range(len(dataset_names)))
-    ax.set_xticklabels(dataset_names)
-    ax.set_xlabel('Benchmark')
-    ax.set_ylabel(f'{measurement.replace("_", " ").title()}')
-    ax.set_title(f'{measurement.replace("_", " ").title()} Comparison Across Methods')
+            ax.errorbar(value, method, xerr=err, label=method,
+                        fmt=marker, color=color, ecolor=color, elinewidth=2, capsize=4, markersize=8)
 
-    # Add legend
-    ax.legend(methods, loc='upper center', ncol=len(methods), fontsize=12)
+        ax.set_yticks(range(len(methods)))
+        ax.set_yticklabels(methods)
+        ax.set_xlabel('')
+        ax.set_title(f'{dataset}')
+
+    # Hide any empty subplots
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+
+    # Set the main title for the figure
+    fig.suptitle(f'{measurement.replace("_", " ").title()} Comparison Across Benchmarks', fontsize=20)
+
+    # Add legend only to the first subplot
+    axs[0].legend(loc='upper right', fontsize=12)
 
     # Save the figure to the results directory
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     save_path = os.path.join(graph_dir, f'comparison_{measurement}.png')
-    plt.savefig(save_path)
+    #plt.savefig(save_path)
 
     # Show the plot
     plt.show()
