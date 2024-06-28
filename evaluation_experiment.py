@@ -33,101 +33,6 @@ def convert_to_serializable(obj):
         return obj
 
 
-
-# all_report = {}
-# all_errors = {}
-# for benchmark in benchmarks:
-#     name = benchmark[0]
-#     if name == "image" or name == 'splice':
-#         continue
-#
-#     splits = 10
-#     data = database[name][0, 0]
-#     benchmark_reports = []
-#
-#     for split_index in range(splits):
-#         X, y, Xtest, ytest = datasets.get_split_data(data, name, split_index)
-#
-#         ARD = False
-#         report = {}
-#         report["ARD"] = ARD
-#         report["training_size"] = X.shape[0]
-#         report["test_size"] = Xtest.shape[0]
-#
-#         ytest = ytest.astype(int)
-#         report["ytest"] = ytest
-#
-#         Z = None
-#
-#         vi_report = evaluation.evaluate_vi(X, y, Xtest, ytest, ARD=ARD, Z=Z)
-#
-#         la_report = evaluation.evaluate_la(X, y, Xtest, ytest, ARD=ARD, Z=Z)
-#
-#         ep_report = evaluation.evaluate_ep(X, y, Xtest, ytest, ARD=ARD, Z=Z)
-#
-#         optimal_a_eps, optimization_time = evaluation.optimize_a_eps(
-#             X, y, Xtest, ytest, ARD=ARD, Z=Z
-#         )
-#
-#         db_report = evaluation.evaluate_db(
-#             X, y, Xtest, ytest, optimal_a_eps, ARD=ARD, Z=Z
-#         )
-#         db_report["db_elapsed_optim"] += optimization_time
-#
-#         report = {**report, **vi_report, **db_report, **la_report, **ep_report}
-#         benchmark_reports.append(report)
-#
-#
-#
-#     average_report = {}
-#     error_report = {}
-#     num_splits = len(benchmark_reports)
-#     keys = benchmark_reports[0].keys()
-#
-#     for key in keys:
-#         if isinstance(benchmark_reports[0][key], (int, float, np.number)):
-#             values = [report[key] for report in benchmark_reports]
-#             average_report[key] = np.mean(values)
-#             error_report[key] = np.std(values) / np.sqrt(num_splits)
-#         else:
-#             average_report[key] = benchmark_reports[0][key]
-#             error_report[key] = None
-#
-#     all_report[name] = convert_to_serializable(average_report)
-#     all_errors[name] = convert_to_serializable(error_report)
-#
-# result_dir = os.path.join('results', 'evaluation')
-# if not os.path.exists(result_dir):
-#     os.makedirs(result_dir)
-#
-#
-# for benchmark_name in all_report.keys():
-#     report_path = os.path.join(result_dir, f'{benchmark_name}_all_report.dat')
-#     error_path = os.path.join(result_dir, f'{benchmark_name}_all_errors.dat')
-#
-#     with open(report_path, 'wb') as f:
-#         pickle.dump(all_report[benchmark_name], f)
-#     with open(error_path, 'wb') as f:
-#         pickle.dump(all_errors[benchmark_name], f)
-#
-#loaded_all_report = {}
-#loaded_all_errors = {}
-
-# Load reports using pickle
-#for benchmark_name in all_report.keys():
-#    report_path = os.path.join(result_dir, f'{benchmark_name}_all_report.dat')
-#    error_path = os.path.join(result_dir, f'{benchmark_name}_all_errors.dat')
-#
-#    with open(report_path, 'rb') as f:
-#        loaded_all_report[benchmark_name] = pickle.load(f)
-#    with open(error_path, 'rb') as f:
-#        loaded_all_errors[benchmark_name] = pickle.load(f)
-#
-#print("Loading process completed.")
-
-
-
-
 def experiment(method_name, method_evaluation, benchmarks, database):
     all_reports = {}
     all_errors = {}
@@ -190,7 +95,6 @@ def experiment(method_name, method_evaluation, benchmarks, database):
             pickle.dump(all_errors[benchmark_name], f)
 
 
-# 独立的评估函数
 experiment('vi', evaluation.evaluate_vi, benchmarks, database)
 
 experiment('la', evaluation.evaluate_la, benchmarks, database)
