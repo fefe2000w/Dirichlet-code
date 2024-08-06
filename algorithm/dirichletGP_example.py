@@ -30,8 +30,7 @@ elif np.sum(y == 0) == 0:
 
 ## GP setup and hyperparam optimisation
 ## ====================================
-kernel = gpflow.kernels.RBF()
-model = dirichlet_model.SGPRh((X, y), a_eps=0.01, kernel=kernel, Z=Z)
+model = dirichlet_model.DBModel((X, y), a_eps=0.01, Z=Z)
 # model.kernel.lengthscales = np.std(X)
 # model.kernel.variance = np.var(Y_tilde)
 
