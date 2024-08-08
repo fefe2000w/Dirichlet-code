@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 import gpflow
 import GPy as gp
@@ -407,7 +406,9 @@ def evaluate_db(
     kernel = gpflow.kernels.RBF(lengthscales=len0, variance=var0)
     if Z is None:
         Z = X
-    db_model = SGPRh((X, Y_tilde), a_eps=a_eps, kernel=kernel, sn2=s2_tilde, Z=Z)
+    db_model = SGPRh(
+        (X, Y_tilde), a_eps=a_eps, kernel=kernel, sn2=s2_tilde, Z=Z
+    )
 
     opt = gpflow.optimizers.Scipy()
     if ampl is not None:
