@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 from scipy.stats import norm, entropy
 import tensorflow as tf
+tf.config.run_functions_eagerly(True)
 from check_shapes import inherit_check_shapes
 
 import gpflow
@@ -24,8 +25,13 @@ class DBModel(GPModel, InternalDataTrainingLossMixin):
     def tilde(self, data, a_eps):
         X, y = data
         # one-hot vector encoding
-        Y01 = np.zeros((y.size, 2))
-        Y01[:, 0], Y01[:, 1] = 1 - y, y
+        # Y01 = np.zeros((y.size, 2))
+        # Y01[:, 0], Y01[:, 1] = 1 - y, y
+        y_vec = y.astype(int)
+        classes = np.max(y_vec).astype(int) + 1
+        Y01 = np.zeros((len(y_vec), classes))
+        for i in range(len(y_vec)):
+            Y01[i, y_vec[i]] = 1
         s2_tilde = tf.math.log(1.0 / (Y01 + a_eps) + 1)
         Y_tilde = tf.math.log(Y01 + a_eps) - 0.5 * s2_tilde
         data_tilde = data_input_to_tensor((X, Y_tilde))
@@ -60,12 +66,12 @@ class DBModel(GPModel, InternalDataTrainingLossMixin):
 
     def posterior(self):
         X, Y_tilde = self.data_tilde
-        Z = self.Z
         kff = self.kernel(X, full_cov=True)
         kff += tf.linalg.diag(
             default_jitter() * tf.ones(X.shape[0], dtype=default_float())
         )
-        noise = tf.linalg.diag(tf.transpose(self.s2_tilde))
+        s2_tilde = self.s2_tilde.numpy()
+        noise = tf.linalg.diag(tf.transpose(s2_tilde))
         K = kff + noise
         L = tf.linalg.cholesky(K)
         invL_y = tf.linalg.triangular_solve(
@@ -98,31 +104,41 @@ class DBModel(GPModel, InternalDataTrainingLossMixin):
         f_mean = tf.transpose(q_mu)
         f_var = tf.transpose(tf.linalg.diag_part(q_cov))
         var_exp = self.likelihood.variational_expectations(
-            X, f_mean, f_var, np.expand_dims(Y, -1)
+            X, f_mean, f_var, Y #????
         )
         expectation = tf.reduce_sum(var_exp)
 
         return expectation - KL
 
-    @inherit_check_shapes
+#    @inherit_check_shapes
     def predict_f(
-        self,
-        Xnew: InputData,
-        full_cov: bool = False,
-        full_output_cov: bool = False,
-    ):  ## Should it use the same method as posterior?
+            self,
+            Xnew: InputData,
+            full_cov: bool = False,
+            full_output_cov: bool = False,
+    ):
         X, Y_tilde = self.data_tilde
+        kxx = self.kernel(X)
+        kxx += tf.linalg.diag(
+            default_jitter() * tf.ones(X.shape[0], dtype=default_float())
+        )
+        s2_tilde = self.s2_tilde.numpy()
+        noise = tf.linalg.diag(tf.transpose(s2_tilde))
+        K = kxx + noise
+        kxn = self.kernel(X, Xnew)
+        knn = self.kernel(Xnew)
 
-        kdiag = self.kernel(X, full_cov=True)
-        s2 = tf.reshape(self.s2_tilde[:, 0], (X.shape[0], 1))
-        K = kdiag + tf.linalg.diag(tf.squeeze(s2))
-        kuf = Kuf(Z, self.kernel, X)
-        kuu = Kuu(Z, self.kernel, jitter=default_jitter())
         L = tf.linalg.cholesky(K)
-        invL_y = tf.linalg.triangular_solve(L, Y_tilde, lower=True)
-        alpha = tf.linalg.triangular_solve(tf.transpose(L), invL_y, lower=True)
-        fmu = tf.linalg.matmul(kuf, alpha)
+        invL_y = tf.linalg.triangular_solve(
+            L, tf.expand_dims(tf.transpose(Y_tilde), -1), lower=True
+        )
+        invL_knx = tf.linalg.triangular_solve(L, kxn, lower=True)
+        fmu = tf.transpose(tf.squeeze(
+            tf.linalg.matmul(tf.transpose(invL_knx, perm=[0, 2, 1]), invL_y)
+        ))
 
-        v = tf.linalg.triangular_solve(L, tf.transpose(kuf), lower=True)
-        fcov = kuu - tf.linalg.matmul(tf.transpose(v), v)
+        cov = knn - tf.linalg.matmul(
+            tf.transpose(invL_knx, perm=[0, 2, 1]), invL_knx
+        )
+        fcov = tf.transpose(tf.linalg.diag_part(cov))
         return fmu, fcov

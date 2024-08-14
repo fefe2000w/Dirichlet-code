@@ -4,7 +4,7 @@ import GPy as gp
 import scipy
 import time
 import numpy as np
-from heteroskedastic import SGPRh
+from dirichlet_model import DBModel
 
 
 def mnll(p, y):
@@ -366,49 +366,48 @@ def evaluate_db(
     Z=None,
     ampl=None,
     leng=None,
-    scale_sn2=False,
+    #scale_sn2=False,
 ):
     report = {}
     X = tf.cast(X, tf.float64)
     Xtest = tf.cast(Xtest, tf.float64)
 
     dim = X.shape[1]
-    if ARD:
-        len0 = np.repeat(np.mean(np.std(X, 0)) * np.sqrt(dim), dim)
-    else:
-        len0 = np.mean(np.std(X, 0)) * np.sqrt(dim)
+    # if ARD:
+    #     len0 = np.repeat(np.mean(np.std(X, 0)) * np.sqrt(dim), dim)
+    # else:
+    #     len0 = np.mean(np.std(X, 0)) * np.sqrt(dim)
 
-    # prepare y: one-hot encoding
-    y_vec = y.astype(int)
-    classes = np.max(y_vec).astype(int) + 1
-    Y = np.zeros((len(y_vec), classes))
-    for i in range(len(y_vec)):
-        Y[i, y_vec[i]] = 1
+    # # prepare y: one-hot encoding
+    # y_vec = y.astype(int)
+    # classes = np.max(y_vec).astype(int) + 1
+    # Y = np.zeros((len(y_vec), classes))
+    # for i in range(len(y_vec)):
+    #     Y[i, y_vec[i]] = 1
 
-    # label transformation
-    s2_tilde = np.log(1.0 / (Y + a_eps) + 1)
-    Y_tilde = np.log(Y + a_eps) - 0.5 * s2_tilde
-
-    # For each y, we have two possibilities: 0+alpha and 1+alpha
-    # Changing alpha (the scale of Gamma) changes the distance
-    # between different class instances.
-    # Changing beta (the rate of Gamma) changes the position
-    # (i.e. log(alpha)-log(beta)-s2_tilde/2 ) but NOT the distance.
-    # Thus, we can simply move y for all classes to our convenience (ie zero mean)
-
-    # 1st term: guarantees that the prior class probabilities are correct
-    # 2nd term: just makes the latent processes zero-mean
-    ymean = np.log(Y.mean(0)) + np.mean(Y_tilde - np.log(Y.mean(0)))
-    Y_tilde = Y_tilde - ymean
-
-    # set up regression
-    var0 = np.var(Y_tilde)
-    kernel = gpflow.kernels.RBF(lengthscales=len0, variance=var0)
+    # # label transformation
+    # s2_tilde = np.log(1.0 / (Y + a_eps) + 1)
+    # Y_tilde = np.log(Y + a_eps) - 0.5 * s2_tilde
+    #
+    # # For each y, we have two possibilities: 0+alpha and 1+alpha
+    # # Changing alpha (the scale of Gamma) changes the distance
+    # # between different class instances.
+    # # Changing beta (the rate of Gamma) changes the position
+    # # (i.e. log(alpha)-log(beta)-s2_tilde/2 ) but NOT the distance.
+    # # Thus, we can simply move y for all classes to our convenience (ie zero mean)
+    #
+    # # 1st term: guarantees that the prior class probabilities are correct
+    # # 2nd term: just makes the latent processes zero-mean
+    # ymean = np.log(Y.mean(0)) + np.mean(Y_tilde - np.log(Y.mean(0)))
+    # Y_tilde = Y_tilde - ymean
+    #
+    # # set up regression
+    # var0 = np.var(Y_tilde)
+    # kernel = gpflow.kernels.RBF(lengthscales=len0, variance=var0)
+    classes = np.max(y.astype(int)).astype(int) + 1
     if Z is None:
         Z = X
-    db_model = SGPRh(
-        (X, Y_tilde), a_eps=a_eps, kernel=kernel, sn2=s2_tilde, Z=Z
-    )
+    db_model = DBModel((X, y), a_eps=0.01, Z=Z)
 
     opt = gpflow.optimizers.Scipy()
     if ampl is not None:
@@ -423,11 +422,11 @@ def evaluate_db(
 
     db_elapsed_optim = None
     if ampl is None or leng is None or a_eps is None:
-        # print('db optim... ', end='', flush=True)
+        print('db optim... ', end='', flush=True)
         start_time = time.time()
         opt.minimize(db_model.training_loss, db_model.trainable_variables)
         db_elapsed_optim = time.time() - start_time
-        # print('done!')
+        print('done!')
         report["db_elapsed_optim"] = db_elapsed_optim
 
     db_amp = np.sqrt(db_model.kernel.variance)
@@ -437,10 +436,10 @@ def evaluate_db(
     report["db_a_eps"] = a_eps
 
     # predict
-    # print('db pred... ', end='', flush=True)
+    print('db pred... ', end='', flush=True)
     start_time = time.time()
     db_fmu, db_fs2 = db_model.predict_f(Xtest)
-    db_fmu = db_fmu + ymean
+    #db_fmu = db_fmu + ymean ???
 
     # Estimate mean of the Dirichlet distribution through sampling
     db_prob = np.zeros(db_fmu.shape)
@@ -453,7 +452,7 @@ def evaluate_db(
         db_prob[i, :] = samples.mean(axis=0)
 
     db_elapsed_pred = time.time() - start_time
-    # print('done!')
+    print('done!')
     report["db_elapsed_pred"] = db_elapsed_pred
 
     db_prob_one = db_prob[:, 1]
@@ -484,67 +483,79 @@ def evaluate_db(
     db_typeIIerror = np.mean(1 - db_pred[ytest == 1])
     report["db_typeIIerror"] = db_typeIIerror
 
+    print("db_elapsed_optim =", db_elapsed_optim)
+    print("db_elapsed_pred =", db_elapsed_pred)
+    print("---")
+    print("db_amp =", db_amp)
+    print("db_len =", db_len)
+    print("---")
+    print("db_error_rate =", db_error_rate)
+    print("db_typeIerror =", db_typeIerror)
+    print("db_typeIIerror =", db_typeIIerror)
+    print("db_ece =", db_ece)
+    print("db_mnll =", db_mnll)
+    print("\n")
     return report
 
 
-################################################################################
-### Ooptimise DB
-opt = scipy.optimize
-
-
-def optimize_a_eps(
-    X, y, Xtest, ytest, ARD=False, Z=None, ampl=None, leng=None, scale_sn2=False
-):
-    optimal_report = None
-    optimal_a_eps = None
-    report_initial = evaluate_db(
-        X,
-        y,
-        Xtest,
-        ytest,
-        1e-05,
-        ARD=ARD,
-        Z=Z,
-        ampl=ampl,
-        leng=leng,
-        scale_sn2=scale_sn2,
-    )
-    optimal_mnll = report_initial["db_mnll"]
-
-    start_time = time.time()
-    for a_eps in np.logspace(-5, 0, num=30, endpoint=True):
-        report = evaluate_db(
-            X,
-            y,
-            Xtest,
-            ytest,
-            a_eps,
-            ARD=ARD,
-            Z=Z,
-            ampl=ampl,
-            leng=leng,
-            scale_sn2=scale_sn2,
-        )
-        if report["db_mnll"] < optimal_mnll:
-            optimal_mnll = report["db_mnll"]
-            optimal_a_eps = a_eps
-            optimal_report = report
-    end_time = time.time()
-
-    total_optimization_time = end_time - start_time
-
-    print("db_elapsed_optim =", optimal_report["db_elapsed_optim"])
-    print("db_elapsed_pred =", optimal_report["db_elapsed_pred"])
-    print("---")
-    print("db_amp =", optimal_report["db_amp"])
-    print("db_len =", optimal_report["db_len"])
-    print("db_a_eps =", optimal_a_eps)
-    print("---")
-    print("db_error_rate =", optimal_report["db_error_rate"])
-    print("db_typeIerror =", optimal_report["db_typeIerror"])
-    print("db_typeIIerror =", optimal_report["db_typeIIerror"])
-    print("db_ece =", optimal_report["db_ece"])
-    print("db_mnll =", optimal_report["db_mnll"])
-    print("\n")
-
-    return optimal_a_eps, total_optimization_time
+# ################################################################################
+# ### Ooptimise DB
+# opt = scipy.optimize
+#
+#
+# def optimize_a_eps(
+#     X, y, Xtest, ytest, ARD=False, Z=None, ampl=None, leng=None, scale_sn2=False
+# ):
+#     optimal_report = None
+#     optimal_a_eps = None
+#     report_initial = evaluate_db(
+#         X,
+#         y,
+#         Xtest,
+#         ytest,
+#         1e-05,
+#         ARD=ARD,
+#         Z=Z,
+#         ampl=ampl,
+#         leng=leng,
+#         scale_sn2=scale_sn2,
+#     )
+#     optimal_mnll = report_initial["db_mnll"]
+#
+#     start_time = time.time()
+#     for a_eps in np.logspace(-5, 0, num=30, endpoint=True):
+#         report = evaluate_db(
+#             X,
+#             y,
+#             Xtest,
+#             ytest,
+#             a_eps,
+#             ARD=ARD,
+#             Z=Z,
+#             ampl=ampl,
+#             leng=leng,
+#             scale_sn2=scale_sn2,
+#         )
+#         if report["db_mnll"] < optimal_mnll:
+#             optimal_mnll = report["db_mnll"]
+#             optimal_a_eps = a_eps
+#             optimal_report = report
+#     end_time = time.time()
+#
+#     total_optimization_time = end_time - start_time
+#
+#     print("db_elapsed_optim =", optimal_report["db_elapsed_optim"])
+#     print("db_elapsed_pred =", optimal_report["db_elapsed_pred"])
+#     print("---")
+#     print("db_amp =", optimal_report["db_amp"])
+#     print("db_len =", optimal_report["db_len"])
+#     print("db_a_eps =", optimal_a_eps)
+#     print("---")
+#     print("db_error_rate =", optimal_report["db_error_rate"])
+#     print("db_typeIerror =", optimal_report["db_typeIerror"])
+#     print("db_typeIIerror =", optimal_report["db_typeIIerror"])
+#     print("db_ece =", optimal_report["db_ece"])
+#     print("db_mnll =", optimal_report["db_mnll"])
+#     print("\n")
+#
+#     return optimal_a_eps, total_optimization_time
