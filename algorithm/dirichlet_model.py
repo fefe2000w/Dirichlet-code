@@ -7,7 +7,7 @@ tf.config.run_functions_eagerly(True)
 from check_shapes import inherit_check_shapes
 
 import gpflow
-from gpflow.base import TensorType, MeanAndVariance, InputData
+from gpflow.base import TensorType, MeanAndVariance, InputData, Transform
 from gpflow.models import GPModel
 from gpflow import posteriors
 from gpflow.kullback_leiblers import gauss_kl
@@ -20,6 +20,22 @@ from gpflow.utilities import to_default_float
 from gpflow.models.training_mixins import InternalDataTrainingLossMixin
 from gpflow.models.util import data_input_to_tensor, inducingpoint_wrapper
 
+from tensorflow_probability import bijectors as tfb
+class SigmoidTransform(tfb.Bijector):
+    def __init__(self):
+        super().__init__(forward_min_event_ndims=0, inverse_min_event_ndims=0, name="sigmoid_transform")
+
+    def _forward(self, x):
+        return tf.math.sigmoid(x)
+
+    def _inverse(self, y):
+        return tf.math.log(y / (1 - y))
+
+    def _forward_log_det_jacobian(self, x):
+        return -tf.nn.softplus(-x) - tf.nn.softplus(x)
+
+    def _inverse_log_det_jacobian(self, y):
+        return -tf.math.log(y) - tf.math.log(1 - y)
 
 class DBModel(GPModel, InternalDataTrainingLossMixin):
     def tilde(self, data, a_eps):
@@ -41,7 +57,7 @@ class DBModel(GPModel, InternalDataTrainingLossMixin):
         self.data = data
         ## Parameterize a_eps and Z (wrap)
         self.a_eps = gpflow.Parameter(
-            a_eps, trainable=True, transform=gpflow.utilities.positive()
+            a_eps, trainable=True, transform=SigmoidTransform()
         )
         self.Z = gpflow.Parameter(Z, trainable=False)
         ## Data transformation: set kernel
@@ -103,14 +119,19 @@ class DBModel(GPModel, InternalDataTrainingLossMixin):
 
         f_mean = tf.transpose(q_mu)
         f_var = tf.transpose(tf.linalg.diag_part(q_cov))
-        var_exp = self.likelihood.variational_expectations(
-            X, f_mean, f_var, Y #????
-        )
+        if Y.ndim == 1:
+            var_exp = self.likelihood.variational_expectations(
+                X, f_mean, f_var, np.expand_dims(Y, -1)
+            )
+        else:
+            var_exp = self.likelihood.variational_expectations(
+                X, f_mean, f_var, Y
+            )
         expectation = tf.reduce_sum(var_exp)
 
         return expectation - KL
 
-#    @inherit_check_shapes
+    @inherit_check_shapes
     def predict_f(
             self,
             Xnew: InputData,
