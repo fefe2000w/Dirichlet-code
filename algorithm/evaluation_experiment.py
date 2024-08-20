@@ -43,7 +43,7 @@ def experiment(method_name, method_evaluation, benchmarks, database):
         if name != "banana":
             continue
 
-        splits = 1
+        splits = 5
         data = database[name][0, 0]
 
         for split_index in range(splits):

@@ -332,8 +332,7 @@ def evaluate_db_new(
     db_typeIIerror = np.mean(1 - db_pred[ytest == 1])
     report["db_typeIIerror"] = db_typeIIerror
 
-    print(db_model.trainable_variables)
-    #print("db_a_eps = ", report["db_a_eps"])
+    print("db_a_eps = ", report["db_a_eps"])
     print("db_elapsed_optim =", db_elapsed_optim)
     print("db_elapsed_pred =", db_elapsed_pred)
     print("---")
