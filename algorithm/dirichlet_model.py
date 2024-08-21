@@ -40,6 +40,7 @@ import tensorflow_probability as tfp
 
 class DBModel(GPModel, InternalDataTrainingLossMixin):
     def tilde(self, data, a_eps):
+        a_eps = tf.exp(a_eps)
         X, y = data
         # one-hot vector encoding
         # Y01 = np.zeros((y.size, 2))
@@ -57,9 +58,7 @@ class DBModel(GPModel, InternalDataTrainingLossMixin):
     def __init__(self, data, a_eps, Z, mean_function=None, **kwargs):
         self.data = data
         ## Parameterize a_eps and Z (wrap)
-        self.a_eps = gpflow.Parameter(
-            a_eps, trainable=True, transform=tfp.bijectors.Sigmoid()
-        )
+        self.a_eps = gpflow.Parameter(a_eps, trainable=True)
         self.Z = gpflow.Parameter(Z, trainable=False)
         ## Data transformation: set kernel
         kernel = gpflow.kernels.RBF(

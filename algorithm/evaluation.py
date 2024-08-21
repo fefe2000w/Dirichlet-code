@@ -283,7 +283,7 @@ def evaluate_db_new(
     report["db_amp"] = db_amp
     db_len = db_model.kernel.lengthscales
     report["db_len"] = db_len
-    report["db_a_eps"] = db_model.trainable_variables[0].numpy()
+    report["db_a_eps"] = tf.exp(db_model.trainable_variables[0].numpy())
 
     # predict
     print('db pred... ', end='', flush=True)

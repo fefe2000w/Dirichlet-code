@@ -554,7 +554,7 @@ for measurement in measurements:
     # Save the figure to the results directory
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     save_path = os.path.join(graph_dir, f'comparison_{measurement}.png')
-    plt.savefig(save_path)
+    #plt.savefig(save_path)
 
     # Show the plot
     plt.show()

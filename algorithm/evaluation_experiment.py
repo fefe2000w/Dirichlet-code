@@ -39,11 +39,11 @@ def experiment(method_name, method_evaluation, benchmarks, database):
 
     for benchmark in benchmarks:
         name = benchmark[0]
-        #if name == "image" or name == 'splice':
-        if name != "banana":
+        if name == "image" or name == 'splice':
+        # if name != "banana":
             continue
 
-        splits = 5
+        splits = 20
         data = database[name][0, 0]
 
         for split_index in range(splits):
@@ -107,32 +107,27 @@ def experiment(method_name, method_evaluation, benchmarks, database):
 
 
 
-# def evaluate_db1(X, y, Xtest, ytest, ARD, Z):
-#     db_report = evaluation.evaluate_db_old(X, y, Xtest, ytest, a_eps=0.1, ARD=ARD, Z=Z)
-#     return db_report
-# experiment('db1', evaluate_db1, benchmarks, database)
-#
-# def evaluate_db2(X, y, Xtest, ytest, ARD, Z):
-#     optimal_a_eps, optimization_time = evaluation.optimize_a_eps(X, y, Xtest, ytest, ARD=ARD, Z=Z)
-#     db_report = evaluation.evaluate_db_old(X, y, Xtest, ytest, optimal_a_eps, ARD=ARD, Z=Z)
-#     db_report["db_elapsed_optim"] += optimization_time
-#     return db_report
-# experiment('db2', evaluate_db2, benchmarks, database)
+def evaluate_db1(X, y, Xtest, ytest, ARD, Z):
+    db_report = evaluation.evaluate_db_old(X, y, Xtest, ytest, a_eps=0.1, ARD=ARD, Z=Z)
+    return db_report
+experiment('db_fixed', evaluate_db1, benchmarks, database)
 
-experiment('db3', evaluation.evaluate_db_new, benchmarks, database)
+def evaluate_db2(X, y, Xtest, ytest, ARD, Z):
+    optimal_a_eps, optimization_time = evaluation.optimize_a_eps(X, y, Xtest, ytest, ARD=ARD, Z=Z)
+    db_report = evaluation.evaluate_db_old(X, y, Xtest, ytest, optimal_a_eps, ARD=ARD, Z=Z)
+    db_report["db_elapsed_optim"] += optimization_time
+    return db_report
+experiment('db_discrete', evaluate_db2, benchmarks, database)
 
-# experiment('vi', evaluation.evaluate_vi, benchmarks, database)
-#
-# experiment('la', evaluation.evaluate_la, benchmarks, database)
-#
-# experiment('ep', evaluation.evaluate_ep, benchmarks, database)
+experiment('db_optimised', evaluation.evaluate_db_new, benchmarks, database)
+
+experiment('vi', evaluation.evaluate_vi, benchmarks, database)
+
+experiment('la', evaluation.evaluate_la, benchmarks, database)
+
+experiment('ep', evaluation.evaluate_ep, benchmarks, database)
 
 
-# def evaluate_db(X, y, Xtest, ytest, ARD, Z):
-#     optimal_a_eps, optimization_time = evaluation.optimize_a_eps(X, y, Xtest, ytest, ARD=ARD, Z=Z)
-#     db_report = evaluation.evaluate_db(X, y, Xtest, ytest, optimal_a_eps, ARD=ARD, Z=Z)
-#     db_report["db_elapsed_optim"] += optimization_time
-#     return db_report
-#
+
 
 
